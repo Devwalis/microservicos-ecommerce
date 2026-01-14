@@ -1,0 +1,143 @@
+version: '3.8'
+
+networks:
+  ecommerce-network:
+  database-network:
+
+volumes:
+  mysql-usuarios-data:
+  mysql-produtos-data:
+  mysql-pedidos-data:
+  mysql-compras-data:
+
+x-environment: &default-environment
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+  TZ: ${TZ}
+
+services:
+
+  # ============================
+  # DATABASES
+  # ============================
+
+  db-usuarios:
+    image: mysql:8.0
+    container_name: db-usuarios
+    restart: unless-stopped
+    networks: [database-network]
+    volumes:
+      - mysql-usuarios-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${USUARIOS_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${USUARIOS_DB_NAME}
+      MYSQL_USER: ${USUARIOS_DB_USER}
+      MYSQL_PASSWORD: ${USUARIOS_DB_PASSWORD}
+    command:
+      - --default-authentication-plugin=mysql_native_password
+
+  db-produtos:
+    image: mysql:8.0
+    container_name: db-produtos
+    restart: unless-stopped
+    networks: [database-network]
+    volumes:
+      - mysql-produtos-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PRODUTOS_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PRODUTOS_DB_NAME}
+      MYSQL_USER: ${PRODUTOS_DB_USER}
+      MYSQL_PASSWORD: ${PRODUTOS_DB_PASSWORD}
+
+  db-pedidos:
+    image: mysql:8.0
+    container_name: db-pedidos
+    restart: unless-stopped
+    networks: [database-network]
+    volumes:
+      - mysql-pedidos-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PEDIDOS_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PEDIDOS_DB_NAME}
+      MYSQL_USER: ${PEDIDOS_DB_USER}
+      MYSQL_PASSWORD: ${PEDIDOS_DB_PASSWORD}
+
+  db-compras:
+    image: mysql:8.0
+    container_name: db-compras
+    restart: unless-stopped
+    networks: [database-network]
+    volumes:
+      - mysql-compras-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${COMPRAS_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${COMPRAS_DB_NAME}
+      MYSQL_USER: ${COMPRAS_DB_USER}
+      MYSQL_PASSWORD: ${COMPRAS_DB_PASSWORD}
+
+  # ============================
+  # SPRING BOOT SERVICES
+  # ============================
+
+  usuarios-service:
+    build: ./usuario-service
+    container_name: usuario-service
+    restart: unless-stopped
+    networks: [ecommerce-network, database-network]
+    depends_on: [db-usuarios]
+    ports:
+      - "${USUARIOS_SERVICE_PORT}:8080"
+    environment:
+      <<: *default-environment
+      SPRING_DATASOURCE_URL: jdbc:mysql://${USUARIOS_DB_HOST}:${USUARIOS_DB_PORT}/${USUARIOS_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${USUARIOS_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${USUARIOS_DB_PASSWORD}
+      SERVER_PORT: 8080
+
+  produtos-service:
+    build: ./produto-service
+    container_name: produto-service
+    restart: unless-stopped
+    networks: [ecommerce-network, database-network]
+    depends_on: [db-produtos]
+    ports:
+      - "${PRODUTOS_SERVICE_PORT}:8080"
+    environment:
+      <<: *default-environment
+      SPRING_DATASOURCE_URL: jdbc:mysql://${PRODUTOS_DB_HOST}:${PRODUTOS_DB_PORT}/${PRODUTOS_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${PRODUTOS_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PRODUTOS_DB_PASSWORD}
+      SERVER_PORT: 8080
+
+  pedidos-service:
+    build: ./pedidos-service
+    container_name: pedidos-service
+    restart: unless-stopped
+    networks: [ecommerce-network, database-network]
+    depends_on: [db-pedidos, usuarios-service]
+    ports:
+      - "${PEDIDOS_SERVICE_PORT}:8086"
+    environment:
+      <<: *default-environment
+      SPRING_DATASOURCE_URL: jdbc:mysql://${PEDIDOS_DB_HOST}:${PEDIDOS_DB_PORT}/${PEDIDOS_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${PEDIDOS_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PEDIDOS_DB_PASSWORD}
+      SERVER_PORT: 8080
+      USUARIOS_SERVICE_URL: http://usuarios-service:8080
+
+  compras-service:
+    build: ./compras-service
+    container_name: compras-service
+    restart: unless-stopped
+    networks: [ecommerce-network, database-network]
+    depends_on: [db-compras, usuarios-service, produtos-service, pedidos-service]
+    ports:
+      - "${COMPRAS_SERVICE_PORT}:8080"
+    environment:
+      <<: *default-environment
+      SPRING_DATASOURCE_URL: jdbc:mysql://${COMPRAS_DB_HOST}:${COMPRAS_DB_PORT}/${COMPRAS_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${COMPRAS_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${COMPRAS_DB_PASSWORD}
+      SERVER_PORT: 8080
+      USUARIOS_SERVICE_URL: http://usuarios-service:8080
+      PRODUTOS_SERVICE_URL: http://produtos-service:8080
+      PEDIDOS_SERVICE_URL: http://pedidos-service:8080

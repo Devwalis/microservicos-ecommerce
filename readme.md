@@ -46,6 +46,7 @@ O sistema é composto por **microsserviços independentes**, cada um com:
 - **Maven**
 - **Spring Data JPA**
 - **Spring Security (planejado)**
+- **t
 
 ### Banco de Dados
 - **MySQL**
