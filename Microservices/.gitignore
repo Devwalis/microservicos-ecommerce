@@ -51,9 +51,5 @@ desktop.ini
 ######################################
 **/docker-compose.override.yml
 
+
 ######################################
-# GITHUB (APENAS O QUE PODE SER IGNORADO)
-######################################
-# NOTA: NÃO IGNORE .github/workflows/ ou .github/actions/
-.github/actions/*/node_modules/
-.github/workflows/.cache/
