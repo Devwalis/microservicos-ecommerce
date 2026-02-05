@@ -6,6 +6,7 @@
 **/application.yml
 **/application-*.yml
 **/*.env
+**/.env.local
 
 ######################################
 # BUILDS (Java / Maven / Gradle)
@@ -13,6 +14,8 @@
 **/target/
 **/build/
 **/.gradle/
+**/out/
+**/bin/
 
 ######################################
 # LOGS E TEMPORÁRIOS
@@ -20,6 +23,7 @@
 **/*.log
 **/logs/
 **/tmp/
+**/*.tmp
 
 ######################################
 # IDEs
@@ -27,14 +31,29 @@
 .vscode/
 .idea/
 *.iml
+*.swp
+*.swo
 
 ######################################
 # SISTEMA OPERACIONAL
 ######################################
 .DS_Store
 Thumbs.db
+desktop.ini
 
 ######################################
 # DEPENDÊNCIAS LOCAIS
 ######################################
 **/node_modules/
+
+######################################
+# DOCKER (se aplicável)
+######################################
+**/docker-compose.override.yml
+
+######################################
+# GITHUB (APENAS O QUE PODE SER IGNORADO)
+######################################
+# NOTA: NÃO IGNORE .github/workflows/ ou .github/actions/
+.github/actions/*/node_modules/
+.github/workflows/.cache/
