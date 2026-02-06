@@ -1,4 +1,3 @@
-
 name: CI/CD - Usuario Service
 
 on:
@@ -13,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -22,28 +21,17 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Remove Maven wrapper if exists
-        working-directory: ./Microservices/usuario-service
+      - name: Clean workspace
         run: |
-          rm -f mvnw mvnw.cmd 2>/dev/null || true
-          rm -rf .mvn/ 2>/dev/null || true
+          # Limpa Maven cache
+          rm -rf ~/.m2/repository/
+          # Limpa projetos
+          find . -name "target" -type d -exec rm -rf {} + 2>/dev/null || true
 
-      - name: Build with Maven
+      - name: Build
         working-directory: ./Microservices/usuario-service
         run: |
-          echo "Java version:"
-          java -version
-          echo ""
-          echo "Maven version:"
-          mvn --version
-          echo ""
-          echo "Building..."
-          mvn clean compile -DskipTests
-
-      - name: Package
-        working-directory: ./Microservices/usuario-service
-        run: |
-          mvn clean package -DskipTests
+          mvn clean package -DskipTests -U -B
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -51,7 +39,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and Push Docker Image (NO-CACHE)
         uses: docker/build-push-action@v5
         with:
           context: ./Microservices/usuario-service
@@ -59,6 +47,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/usuarios-service:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/usuarios-service:${{ github.sha }}
+          no-cache: true
 
   deploy:
     runs-on: ubuntu-latest
@@ -66,7 +55,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
-      - name: Deploy to EC2
+      - name: Deploy with Cleanup
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -74,10 +63,24 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/ecommerce-microservices
+            echo "🧹 Cleaning EC2 before deploy..."
+            
+            # Stop and remove container if exists
+            docker stop usuario-service 2>/dev/null || true
+            docker rm usuario-service 2>/dev/null || true
+            
+            # Remove old images
+            docker images --format "{{.Repository}}:{{.Tag}}" | grep usuario | while read img; do
+              docker rmi -f "\$img" 2>/dev/null || true
+            done
+            
+            echo "🚀 Pulling new image..."
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/usuarios-service:latest
-            docker stop usuario-service || true
-            docker rm usuario-service || true
+            
+            echo "🔄 Starting fresh container..."
+            cd ~/ecommerce-microservices
             docker-compose -f docker-compose.usuario.yml up -d
-            echo "✅ Deployed!"
-            docker ps --filter "name=usuario-service"
+            
+            echo "✅ DEPLOYED FRESH!"
+            echo "Java version in container:"
+            docker exec usuario-service java -version
