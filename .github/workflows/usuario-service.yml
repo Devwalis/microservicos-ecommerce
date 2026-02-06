@@ -35,6 +35,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./Microservices/usuario-service
+
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/usuario-service:latest
